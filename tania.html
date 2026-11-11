@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tania Lopez Hernandez</title>
+<link href="https://fonts.googleapis.com/css2?family=Great+Vibes&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; overflow: hidden; background: #02030a; }
+  body {
+    background: radial-gradient(ellipse at bottom, #1b1040 0%, #090a1f 50%, #02030a 100%);
+  }
+  canvas#fuegos { position: fixed; inset: 0; z-index: 1; }
+
+  /* Estrellas de fondo */
+  .estrellas {
+    position: fixed; inset: 0; z-index: 0;
+    background-image:
+      radial-gradient(1px 1px at 20% 30%, #fff, transparent),
+      radial-gradient(1px 1px at 70% 20%, #fff, transparent),
+      radial-gradient(2px 2px at 40% 70%, #ffd, transparent),
+      radial-gradient(1px 1px at 85% 60%, #fff, transparent),
+      radial-gradient(1px 1px at 10% 80%, #fff, transparent),
+      radial-gradient(2px 2px at 60% 45%, #dff, transparent);
+    background-size: 400px 400px;
+    animation: titilar 4s ease-in-out infinite alternate;
+  }
+  @keyframes titilar { from { opacity: .5; } to { opacity: 1; } }
+
+  .contenedor {
+    position: fixed; inset: 0; z-index: 2;
+    display: flex; align-items: center; justify-content: center;
+    text-align: center; padding: 20px; pointer-events: none;
+  }
+  h1 {
+    font-family: 'Great Vibes', 'Brush Script MT', 'Segoe Script', cursive;
+    font-style: italic;
+    font-weight: 400;
+    font-size: clamp(2.8rem, 10vw, 8rem);
+    line-height: 1.15;
+    background: linear-gradient(90deg, #ff4d6d, #ffb703, #fff176, #4cc9f0, #c77dff, #ff4d6d);
+    background-size: 300% 100%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    animation: colores 6s linear infinite, brillo 2.5s ease-in-out infinite alternate;
+    filter: drop-shadow(0 0 12px rgba(255, 200, 100, .8));
+  }
+  @keyframes colores { to { background-position: 300% 0; } }
+  @keyframes brillo {
+    from { filter: drop-shadow(0 0 8px rgba(255, 180, 80, .6)) drop-shadow(0 0 20px rgba(255, 80, 120, .4)); transform: scale(1); }
+    to   { filter: drop-shadow(0 0 18px rgba(255, 230, 120, 1)) drop-shadow(0 0 40px rgba(120, 180, 255, .7)); transform: scale(1.03); }
+  }
+</style>
+</head>
+<body>
+  <div class="estrellas"></div>
+  <canvas id="fuegos"></canvas>
+  <div class="contenedor">
+    <h1>Tania Lopez Hernandez</h1>
+  </div>
+
+<script>
+const canvas = document.getElementById('fuegos');
+const ctx = canvas.getContext('2d');
+let W, H;
+function ajustar() { W = canvas.width = innerWidth; H = canvas.height = innerHeight; }
+ajustar();
+addEventListener('resize', ajustar);
+
+const cohetes = [];
+const particulas = [];
+const GRAVEDAD = 0.05;
+
+class Cohete {
+  constructor(x, yObjetivo) {
+    this.x = x ?? Math.random() * W;
+    this.y = H;
+    this.yObjetivo = yObjetivo ?? H * (0.15 + Math.random() * 0.4);
+    this.vy = -(8 + Math.random() * 4);
+    this.hue = Math.random() * 360;
+    this.estela = [];
+  }
+  actualizar() {
+    this.estela.push({ x: this.x, y: this.y });
+    if (this.estela.length > 8) this.estela.shift();
+    this.y += this.vy;
+    this.vy += 0.08;
+    if (this.vy >= -1 || this.y <= this.yObjetivo) { this.explotar(); return false; }
+    return true;
+  }
+  dibujar() {
+    ctx.beginPath();
+    ctx.moveTo(this.estela[0]?.x ?? this.x, this.estela[0]?.y ?? this.y);
+    ctx.lineTo(this.x, this.y);
+    ctx.strokeStyle = `hsl(${this.hue},100%,70%)`;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+  }
+  explotar() {
+    const tipo = Math.floor(Math.random() * 3);
+    const n = 90 + Math.floor(Math.random() * 60);
+    for (let i = 0; i < n; i++) {
+      const ang = (Math.PI * 2 * i) / n;
+      let vel = 2 + Math.random() * 4;
+      if (tipo === 1) vel = 4; // círculo perfecto
+      if (tipo === 2) vel = (i % 2 ? 2 : 5); // estrella
+      particulas.push(new Particula(this.x, this.y, Math.cos(ang) * vel, Math.sin(ang) * vel,
+        this.hue + (Math.random() * 40 - 20)));
+    }
+    // destello central
+    for (let i = 0; i < 12; i++) {
+      particulas.push(new Particula(this.x, this.y, (Math.random() - .5) * 2, (Math.random() - .5) * 2, 50, 1.5));
+    }
+  }
+}
+
+class Particula {
+  constructor(x, y, vx, vy, hue, tam = 2) {
+    this.x = x; this.y = y; this.vx = vx; this.vy = vy;
+    this.hue = hue; this.tam = tam;
+    this.vida = 1;
+    this.decay = 0.008 + Math.random() * 0.015;
+  }
+  actualizar() {
+    this.vx *= 0.985; this.vy *= 0.985;
+    this.vy += GRAVEDAD;
+    this.x += this.vx; this.y += this.vy;
+    this.vida -= this.decay;
+    return this.vida > 0;
+  }
+  dibujar() {
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.tam * this.vida + 0.3, 0, Math.PI * 2);
+    ctx.fillStyle = `hsla(${this.hue},100%,${55 + 25 * this.vida}%,${this.vida})`;
+    ctx.fill();
+  }
+}
+
+function lanzar(x, y) { cohetes.push(new Cohete(x, y)); }
+
+// Lanzamiento automático
+setInterval(() => { if (Math.random() < 0.8) lanzar(); }, 450);
+// Clic o toque = fuego artificial
+addEventListener('pointerdown', e => lanzar(e.clientX, e.clientY));
+// Salva inicial
+for (let i = 0; i < 4; i++) setTimeout(() => lanzar(), i * 250);
+
+function animar() {
+  ctx.globalCompositeOperation = 'destination-out';
+  ctx.fillStyle = 'rgba(0,0,0,0.2)';
+  ctx.fillRect(0, 0, W, H);
+  ctx.globalCompositeOperation = 'lighter';
+
+  for (let i = cohetes.length - 1; i >= 0; i--) {
+    cohetes[i].dibujar();
+    if (!cohetes[i].actualizar()) cohetes.splice(i, 1);
+  }
+  for (let i = particulas.length - 1; i >= 0; i--) {
+    particulas[i].dibujar();
+    if (!particulas[i].actualizar()) particulas.splice(i, 1);
+  }
+  requestAnimationFrame(animar);
+}
+animar();
+</script>
+</body>
+</html>
